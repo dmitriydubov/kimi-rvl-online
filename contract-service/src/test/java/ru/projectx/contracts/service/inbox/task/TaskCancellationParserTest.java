@@ -13,11 +13,13 @@ import ru.projectx.contracts.message.task.ContractTaskCancellation;
 import ru.projectx.contracts.service.inbox.parse.MessageBodies;
 import ru.projectx.contracts.support.TaskBodies;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class TaskCancellationParserTest {
 
-    private final TaskCancellationParser parser =
-            new TaskCancellationParser(new MessageBodies(JsonMapper.builder().build()));
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    private final TaskCancellationParser parser = new TaskCancellationParser(new MessageBodies(JSON));
 
     @Test
     void cancellation_isParsedWithMomentReasonAndComment() {
@@ -47,6 +49,17 @@ class TaskCancellationParserTest {
         assertThatThrownBy(() -> parser.parse(TaskBodies.cancelled("EXPIRED").withoutDataField(field).toJson()))
                 .isInstanceOf(ContractViolationException.class)
                 .hasMessage("нет обязательного поля data." + field);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"73001", "true", "[]", "{}"})
+    void nonStringComment_isViolationNamingTheField(String node) {
+        ObjectNode body = (ObjectNode) JSON.readTree(TaskBodies.cancelled("EXPIRED").toJson());
+        ((ObjectNode) body.get("data")).set("cancel_comment", JSON.readTree(node));
+
+        assertThatThrownBy(() -> parser.parse(JSON.writeValueAsString(body)))
+                .isInstanceOf(ContractViolationException.class)
+                .hasMessage("недопустимое значение поля data.cancel_comment").hasNoCause();
     }
 
     @Test

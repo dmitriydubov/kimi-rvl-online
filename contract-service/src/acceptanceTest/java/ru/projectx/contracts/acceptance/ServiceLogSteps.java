@@ -8,8 +8,10 @@ import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.ru.Тогда;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.JsonNode;
@@ -137,6 +139,33 @@ public class ServiceLogSteps {
                 .as("записи журнала со значением поля %s", field).isEmpty();
     }
 
+    @Тогда("JSON-значение поля {string} сообщения {string} есть в его теле, но не попало ни в причину исхода, ни в журнал Договоров")
+    public void jsonValueStaysOutOfOutcomeAndLog(String field, String messageId) {
+        JsonNode body = messages.read(published.of(messageId));
+        JsonNode value = node(body, field);
+        assertThat(value.isMissingNode()).as("в теле сообщения есть поле %s", field).isFalse();
+        assertThat(new String(published.of(messageId), StandardCharsets.UTF_8)).contains(value.toString());
+        InboxJournal.Entry entry = inbox.find(messageId)
+                .orElseThrow(() -> new AssertionError("в журнале входящих нет записи о сообщении " + messageId));
+        Set<String> values = new LinkedHashSet<>();
+        collectValues(value, values);
+        for (String text : values) {
+            assertThat(entry.errorMessage()).as("причина исхода").satisfiesAnyOf(
+                    reason -> assertThat(reason).isNull(),
+                    reason -> assertThat(reason).doesNotContain(text));
+            assertThat(journal.mentioning(text)).extracting(ILoggingEvent::getFormattedMessage)
+                    .as("записи журнала со значением поля %s", field).isEmpty();
+        }
+    }
+
+    private static void collectValues(JsonNode node, Set<String> values) {
+        values.add(node.toString());
+        if (node.isString()) {
+            values.add(node.stringValue());
+        }
+        node.forEach(child -> collectValues(child, values));
+    }
+
     @Тогда("значение поля {string} сообщения с дефектом конверта есть в опубликованных байтах, но не попало в журнал Договоров")
     public void personalValueOfDefectiveMessageStaysInBytes(String field) {
         String value = value(messages.read(published.defectiveEnvelopeSource()), field)
@@ -147,7 +176,12 @@ public class ServiceLogSteps {
     }
 
     static Optional<String> value(JsonNode body, String field) {
-        JsonNode node = body.path("data");
+        JsonNode value = node(body, field);
+        return value.isString() ? Optional.of(value.stringValue()) : Optional.empty();
+    }
+
+    private static JsonNode node(JsonNode body, String field) {
+        JsonNode node = field.startsWith("data.") ? body : body.path("data");
         Matcher segments = SEGMENT.matcher(field);
         while (segments.find()) {
             node = node.path(segments.group(1));
@@ -155,6 +189,6 @@ public class ServiceLogSteps {
                 node = node.path(Integer.parseInt(segments.group(2)));
             }
         }
-        return node.isString() ? Optional.of(node.stringValue()) : Optional.empty();
+        return node;
     }
 }

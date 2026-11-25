@@ -50,6 +50,43 @@ public class IssuanceSteps {
                 .containsExactlyElementsOf(Arrays.stream(summaries.split(",")).map(String::trim).toList());
     }
 
+    @Тогда("значение поля {string} выпуска участника {string} заявки {string} — {string}")
+    public void exactFieldValue(String field, String participant, String request, String form) {
+        List<IssuanceRecords.Record> all = records.of(participant, request);
+        assertThat(all).as("записей о выпуске по участнику %s", participant).isNotEmpty();
+        IssuanceRecords.Record record = all.get(all.size() - 1);
+        IssuanceRecords.Person person = records.personsOf(record.id()).stream()
+                .filter(candidate -> "INSURED".equals(candidate.role())).findFirst()
+                .orElseThrow(() -> new AssertionError("у выпуска нет застрахованного лица"));
+        assertThat(actualFieldValue(field, record, person)).as("поле %s выпуска", field)
+                .isEqualTo(expectedFieldValue(form));
+    }
+
+    private static @Nullable String expectedFieldValue(String form) {
+        return switch (form) {
+            case "пусто" -> null;
+            case "пустая строка" -> "";
+            case "три пробела" -> "   ";
+            default -> throw new IllegalArgumentException("неизвестная форма значения: " + form);
+        };
+    }
+
+    private static @Nullable String actualFieldValue(String field, IssuanceRecords.Record record,
+            IssuanceRecords.Person person) {
+        return switch (field) {
+            case "cancel_comment" -> record.cancelComment();
+            case "policy_usk_number" -> record.policyUskNumber();
+            case "personal_data.middle_name" -> person.middleName();
+            case "personal_data.relation_type" -> person.relationType();
+            case "personal_data.address" -> person.address();
+            case "personal_data.document.series" -> person.documentSeries();
+            case "personal_data.document.issued_by" -> person.documentIssuedBy();
+            case "personal_data.document.issued_at" -> text(person.documentIssuedAt());
+            case "personal_data.document.division_code" -> person.documentDivisionCode();
+            default -> throw new IllegalArgumentException("неизвестное поле выпуска: " + field);
+        };
+    }
+
     @Тогда("стороны выпуска участника {string} заявки {string}:")
     public void parties(String participant, String request, List<Map<String, String>> expected) {
         List<IssuanceRecords.Record> all = records.of(participant, request);

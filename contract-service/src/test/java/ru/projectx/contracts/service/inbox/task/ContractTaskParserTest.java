@@ -17,11 +17,13 @@ import ru.projectx.contracts.message.task.TaskParticipant;
 import ru.projectx.contracts.service.inbox.parse.MessageBodies;
 import ru.projectx.contracts.support.TaskBodies;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class ContractTaskParserTest {
 
-    private final ContractTaskParser parser =
-            new ContractTaskParser(new MessageBodies(JsonMapper.builder().build()));
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    private final ContractTaskParser parser = new ContractTaskParser(new MessageBodies(JSON));
 
     @Test
     void completeTask_isParsedWithEveryParticipantInOrder() {
@@ -98,6 +100,27 @@ class ContractTaskParserTest {
         assertThatThrownBy(() -> parser.parse(body.toJson()))
                 .isInstanceOf(ContractViolationException.class)
                 .hasMessage("недопустимое значение поля data.participants[1].program_id");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"program_id", "personal_data.middle_name", "personal_data.relation_type",
+            "personal_data.address", "personal_data.document.series", "personal_data.document.issued_by",
+            "personal_data.document.issued_at", "personal_data.document.division_code"})
+    void nonStringOptionalParticipantField_isViolationNamingTheField(String field) {
+        assertThatThrownBy(() -> parser.parse(withParticipantNode(field, "73001")))
+                .isInstanceOf(ContractViolationException.class)
+                .hasMessage("недопустимое значение поля data.participants[0]." + field).hasNoCause();
+    }
+
+    private static String withParticipantNode(String path, String node) {
+        ObjectNode root = (ObjectNode) JSON.readTree(TaskBodies.upserted().toJson());
+        ObjectNode parent = (ObjectNode) root.get("data").get("participants").get(0);
+        String[] names = path.split("\\.");
+        for (int index = 0; index < names.length - 1; index++) {
+            parent = (ObjectNode) parent.get(names[index]);
+        }
+        parent.set(names[names.length - 1], JSON.readTree(node));
+        return JSON.writeValueAsString(root);
     }
 
     @Test

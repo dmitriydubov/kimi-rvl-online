@@ -36,7 +36,8 @@ public class IssuanceRecords {
 
     private static final String PERSONS = """
             select role::text as role, participant_id, last_name, first_name, middle_name, birth_date, gender::text as gender,
-                   relation_type, document_type::text as document_type, document_series, document_number
+                   relation_type, document_type::text as document_type, document_series, document_number,
+                   document_issued_by, document_issued_at, document_division_code, address
               from contract_persons
              where contract_id = :owner or lm_policy_id = :owner
              order by contract_persons.role
@@ -68,7 +69,8 @@ public class IssuanceRecords {
 
     record Person(String role, UUID participant, String lastName, String firstName, @Nullable String middleName,
             LocalDate birthDate, String gender, @Nullable String relationType, String documentType,
-            @Nullable String documentSeries, String documentNumber) {
+            @Nullable String documentSeries, String documentNumber, @Nullable String documentIssuedBy,
+            @Nullable LocalDate documentIssuedAt, @Nullable String documentDivisionCode, @Nullable String address) {
     }
 
     List<Record> of(String participantId, String requestId) {
@@ -116,7 +118,9 @@ public class IssuanceRecords {
         return new Person(row.getString("role"), row.getObject("participant_id", UUID.class), row.getString("last_name"),
                 row.getString("first_name"), row.getString("middle_name"), row.getObject("birth_date", LocalDate.class),
                 row.getString("gender"), row.getString("relation_type"), row.getString("document_type"),
-                row.getString("document_series"), row.getString("document_number"));
+                row.getString("document_series"), row.getString("document_number"), row.getString("document_issued_by"),
+                row.getObject("document_issued_at", LocalDate.class), row.getString("document_division_code"),
+                row.getString("address"));
     }
 
     UUID latestContractId(String participantId, String requestId) {

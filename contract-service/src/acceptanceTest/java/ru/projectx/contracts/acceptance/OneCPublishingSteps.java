@@ -29,6 +29,15 @@ public class OneCPublishingSteps {
                 fields));
     }
 
+    @Когда("1С:УСК публикует в свою очередь результат выпуска {string} по полису ЛМ участника {string} заявки {string} с дефектом {optionalDefect}:")
+    public void resultPublishedWithOptionalDefect(String messageId, String participantId, String requestId,
+            String defect, Map<String, String> fields) {
+        ObjectNode body = messages.issued(messageId, requestId, records.latestLmPolicyId(participantId, requestId),
+                fields);
+        OptionalFieldDefect.apply(body, defect);
+        publish(messageId, body);
+    }
+
     @Когда("1С:УСК публикует в свою очередь результат выпуска {string} по заявке {string} для полиса ЛМ с идентификатором {string}:")
     public void resultPublishedForPolicy(String messageId, String requestId, String policyId,
             Map<String, String> fields) {

@@ -18,10 +18,12 @@ import ru.projectx.contracts.service.usk.UskResultLayout;
 import ru.projectx.contracts.support.LmPolicyResultBodies;
 import ru.projectx.contracts.support.UskResultBodies;
 import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 class UskResultParserTest {
 
-    private static final MessageBodies BODIES = new MessageBodies(JsonMapper.builder().build());
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final MessageBodies BODIES = new MessageBodies(JSON);
     private static final UskResultLayout LM_POLICY = new UskResultLayout("ISSUED", "policy_usk_id",
             "policy_usk_number", FieldPresence.OPTIONAL, FieldPresence.OPTIONAL);
     private static final UskResultLayout KM_CONTRACT = new UskResultLayout("REGISTERED", "contract_usk_id",
@@ -66,6 +68,28 @@ class UskResultParserTest {
             assertThat(result.uskNumber()).isNull();
             assertThat(result.documents()).containsExactly(new IssuedDocument("POLICY", LmPolicyResultBodies.FILE_URL,
                     null));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"73001", "true", "[]", "{}"})
+        void nonStringUskNumberWhenIssued_isViolationNamingTheField(String node) {
+            ObjectNode body = (ObjectNode) JSON.readTree(LmPolicyResultBodies.issued().toJson());
+            ((ObjectNode) body.get("data")).set("policy_usk_number", JSON.readTree(node));
+
+            assertThatThrownBy(() -> parser.parse(JSON.writeValueAsString(body)))
+                    .isInstanceOf(ContractViolationException.class)
+                    .hasMessage("недопустимое значение поля data.policy_usk_number").hasNoCause();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"73001", "true", "[]", "{}"})
+        void nonStringUskNumberWhenFailed_isIgnored(String node) {
+            ObjectNode body = (ObjectNode) JSON.readTree(LmPolicyResultBodies.failed().toJson());
+            ((ObjectNode) body.get("data")).set("policy_usk_number", JSON.readTree(node));
+
+            assertThat(parser.parse(JSON.writeValueAsString(body))).isEqualTo(new UskResult.Failed(
+                    UUID.fromString(LmPolicyResultBodies.POLICY_ID), "INSURED_NOT_COVERED",
+                    "Стенд: застрахованный не входит в корпоративный договор"));
         }
 
         @Test

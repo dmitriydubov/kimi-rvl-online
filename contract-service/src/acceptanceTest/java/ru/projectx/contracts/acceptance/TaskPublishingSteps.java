@@ -1,6 +1,7 @@
 package ru.projectx.contracts.acceptance;
 
 import io.cucumber.java.DataTableType;
+import io.cucumber.java.ParameterType;
 import io.cucumber.java.ru.Дано;
 import io.cucumber.java.ru.Когда;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,11 @@ public class TaskPublishingSteps {
         return row;
     }
 
+    @ParameterType("\"(.*)\"")
+    public String optionalDefect(String value) {
+        return value;
+    }
+
     @Дано("у сервиса Заявок есть заявка:")
     public void requestDefined(Map<String, String> requisites) {
         requests.define(requisites);
@@ -42,6 +48,14 @@ public class TaskPublishingSteps {
     @Дано("сервис Заявок публикует в свою очередь задачу на выпуск {string} по заявке {string} версии {int} с участниками:")
     public void taskPublished(String messageId, String requestId, int version, List<Map<String, String>> participants) {
         publish(messageId, messages.upserted(messageId, requestId, version, participants));
+    }
+
+    @Когда("сервис Заявок публикует в свою очередь задачу на выпуск {string} по заявке {string} версии {int} с дефектом {optionalDefect} и участниками:")
+    public void taskPublishedWithOptionalDefect(String messageId, String requestId, int version, String defect,
+            List<Map<String, String>> participants) {
+        ObjectNode body = messages.upserted(messageId, requestId, version, participants);
+        OptionalFieldDefect.apply(body, defect);
+        publish(messageId, body);
     }
 
     @Когда("сервис Заявок публикует в свою очередь задачу на выпуск {string} по заявке {string} версии {int} с дефектом {string}")
@@ -84,6 +98,14 @@ public class TaskPublishingSteps {
     @Дано("сервис Заявок публикует в свою очередь прекращение работы {string} по заявке {string} версии {int}:")
     public void cancellationPublished(String messageId, String requestId, int version, Map<String, String> fields) {
         publish(messageId, messages.cancelled(messageId, requestId, version, fields));
+    }
+
+    @Когда("сервис Заявок публикует в свою очередь прекращение работы {string} по заявке {string} версии {int} с дефектом {optionalDefect}:")
+    public void cancellationWithOptionalDefect(String messageId, String requestId, int version, String defect,
+            Map<String, String> fields) {
+        ObjectNode body = messages.cancelled(messageId, requestId, version, fields);
+        OptionalFieldDefect.apply(body, defect);
+        publish(messageId, body);
     }
 
     private static byte[] defectiveBytes(String defect, String json) {
