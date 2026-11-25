@@ -1,0 +1,1 @@
+../gauntlet/adapters/kimi/AGENTS.md
