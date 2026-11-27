@@ -89,6 +89,7 @@ final class StandStorage {
     }
 
     List<String> keys(String bucket, String prefix) throws Exception {
+        recover();
         List<String> keys = new ArrayList<>();
         for (Result<Item> item : client().listObjects(
                 ListObjectsArgs.builder().bucket(bucket).prefix(prefix).recursive(true).build())) {
@@ -98,6 +99,7 @@ final class StandStorage {
     }
 
     byte[] object(String bucket, String key) throws Exception {
+        recover();
         try (GetObjectResponse object = client().getObject(GetObjectArgs.builder().bucket(bucket).object(key).build())) {
             return object.readAllBytes();
         }

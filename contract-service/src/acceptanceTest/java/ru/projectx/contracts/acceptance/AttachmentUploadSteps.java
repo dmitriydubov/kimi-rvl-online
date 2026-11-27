@@ -25,18 +25,20 @@ public class AttachmentUploadSteps {
             Map.entry("тип файла не указан", request -> withFile(request, null, content(CONTENT))),
             Map.entry("пустой файл", request -> withFile(request, JPEG, new byte[0])),
             Map.entry("файл на байт больше предела", request -> withFile(request, JPEG, filler(OVER_LIMIT))),
-            Map.entry("идентификатор заявки в пути — не GUID", request -> new AttachmentRequest(NOT_A_GUID,
-                    request.participant(), request.attachmentPart(), request.filePart(), Optional.empty(), true)),
-            Map.entry("идентификатор участника в пути — не GUID", request -> new AttachmentRequest(request.request(),
-                    NOT_A_GUID, request.attachmentPart(), request.filePart(), Optional.empty(), true)),
-            Map.entry("нет части attachment_id", request -> new AttachmentRequest(request.request(),
-                    request.participant(), Optional.empty(), request.filePart(), Optional.empty(), true)),
-            Map.entry("attachment_id — не GUID", request -> new AttachmentRequest(request.request(),
-                    request.participant(), Optional.of(NOT_A_GUID), request.filePart(), Optional.empty(), true)),
-            Map.entry("нет части file", request -> new AttachmentRequest(request.request(), request.participant(),
-                    request.attachmentPart(), Optional.empty(), Optional.empty(), true)),
-            Map.entry("тело не multipart", request -> new AttachmentRequest(request.request(), request.participant(),
-                    request.attachmentPart(), Optional.empty(), Optional.empty(), false)));
+            Map.entry("идентификатор заявки в пути — не GUID", request -> request.withPath(
+                    "/internal/v1/requests/not-a-guid/participants/" + requestParticipant(request) + "/attachments")),
+            Map.entry("идентификатор участника в пути — не GUID", request -> request.withPath(
+                    "/internal/v1/requests/" + requestRequest(request) + "/participants/not-a-guid/attachments")),
+            Map.entry("нет части attachment_id", AttachmentRequest::withoutAttachment),
+            Map.entry("attachment_id — не GUID", request -> request.withAttachment(NOT_A_GUID)),
+            Map.entry("нет части file", AttachmentRequest::withoutFile),
+            Map.entry("attachment_id с filename", request -> request.withAttachmentFilename("document.txt")),
+            Map.entry("attachment_id с filename=\"\"", request -> request.withAttachmentFilename("")),
+            Map.entry("file без filename", request -> request.withFile(JPEG, content(CONTENT), Optional.empty())),
+            Map.entry("file filename=\"\"", request -> request.withFile(JPEG, content(CONTENT), Optional.of(""))),
+            Map.entry("file filename=\"   \"", request -> request.withFile(JPEG, content(CONTENT), Optional.of("   "))),
+            Map.entry("тело не multipart", request -> AttachmentRequest.certificate(requestRequest(request),
+                    requestParticipant(request), request.attachmentPart(), Optional.empty(), Optional.empty(), false)));
 
     private static final Map<String, String> INVALID_REQUEST_IDS = Map.of(
             "длиной 65 символов", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
@@ -54,12 +56,10 @@ public class AttachmentUploadSteps {
         calls.send(request(request, participant, table.asMap()));
     }
 
-    @Когда("сервис Заявок загружает справку участника {string} заявки {string} с дефектом {string}")
+    @Когда("^сервис Заявок загружает справку участника \"([^\"]+)\" заявки \"([^\"]+)\" с дефектом \"(.*)\"$")
     public void uploadWithDefect(String participant, String request, String defect)
             throws IOException, InterruptedException {
-        UnaryOperator<AttachmentRequest> spoil = Optional.ofNullable(DEFECTS.get(defect))
-                .orElseThrow(() -> new AssertionError("дефекта «" + defect + "» нет в перечне шага"));
-        calls.send(spoil.apply(standard(request, participant)));
+        calls.send(spoil(standard(request, participant), defect));
     }
 
     @Когда("сервис Заявок загружает справку участника {string} заявки {string} с заголовком X-Request-Id {string}:")
@@ -76,28 +76,55 @@ public class AttachmentUploadSteps {
         calls.send(request(request, participant, table.asMap()).withRequestId(requestId));
     }
 
+    static AttachmentRequest spoil(AttachmentRequest request, String defect) {
+        return Optional.ofNullable(DEFECTS.get(defect))
+                .orElseThrow(() -> new AssertionError("дефекта «" + defect + "» нет в перечне шага"))
+                .apply(request);
+    }
+
+    static AttachmentRequest standardConsent(String policy, String familyMember, Map<String, String> fields) {
+        byte[] content = Optional.ofNullable(fields.get("содержимое")).map(AttachmentUploadSteps::content)
+                .orElseGet(() -> filler(Integer.parseInt(required(fields, "размер"))));
+        return AttachmentRequest.consent(policy, familyMember, Optional.of(required(fields, "вложение")),
+                Optional.of(new AttachmentRequest.FilePart(Optional.of(required(fields, "имя файла")),
+                        required(fields, "тип"), content)));
+    }
+
+    static String invalidRequestId(String kind) {
+        return Optional.ofNullable(INVALID_REQUEST_IDS.get(kind))
+                .orElseThrow(() -> new AssertionError("недопустимого заголовка «" + kind + "» нет в перечне шага"));
+    }
+
     private static AttachmentRequest request(String request, String participant, Map<String, String> fields) {
         byte[] content = Optional.ofNullable(fields.get("содержимое")).map(AttachmentUploadSteps::content)
                 .orElseGet(() -> filler(Integer.parseInt(required(fields, "размер"))));
-        return new AttachmentRequest(request, participant, Optional.of(required(fields, "вложение")),
-                Optional.of(new AttachmentRequest.FilePart(required(fields, "имя файла"), required(fields, "тип"),
-                        content)), Optional.empty(), true);
+        return AttachmentRequest.certificate(request, participant, Optional.of(required(fields, "вложение")),
+                Optional.of(new AttachmentRequest.FilePart(Optional.of(required(fields, "имя файла")),
+                        required(fields, "тип"), content)), Optional.empty(), true);
     }
 
     private static AttachmentRequest standard(String request, String participant) {
-        return new AttachmentRequest(request, participant, Optional.of(ATTACHMENT),
-                Optional.of(new AttachmentRequest.FilePart(FILE_NAME, JPEG, content(CONTENT))), Optional.empty(), true);
+        return AttachmentRequest.certificate(request, participant, Optional.of(ATTACHMENT),
+                Optional.of(new AttachmentRequest.FilePart(Optional.of(FILE_NAME), JPEG, content(CONTENT))),
+                Optional.empty(), true);
     }
 
     private static AttachmentRequest withFile(AttachmentRequest request, @Nullable String contentType,
             byte[] content) {
-        return new AttachmentRequest(request.request(), request.participant(), request.attachmentPart(),
-                Optional.of(new AttachmentRequest.FilePart(FILE_NAME, contentType, content)), Optional.empty(), true);
+        return request.withFile(contentType, content, Optional.of(FILE_NAME));
     }
 
     private static String required(Map<String, String> fields, String name) {
         return Optional.ofNullable(fields.get(name))
                 .orElseThrow(() -> new AssertionError("в таблице загрузки нет строки «" + name + "»"));
+    }
+
+    private static String requestRequest(AttachmentRequest request) {
+        return request.path().split("/")[4];
+    }
+
+    private static String requestParticipant(AttachmentRequest request) {
+        return request.path().split("/")[6];
     }
 
     private static byte[] content(String text) {

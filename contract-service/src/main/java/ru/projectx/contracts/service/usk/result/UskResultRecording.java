@@ -10,7 +10,7 @@ import ru.projectx.contracts.entity.issuance.IssuanceRecord;
 import ru.projectx.contracts.entity.issuance.IssuanceStatus;
 import ru.projectx.contracts.entity.issuance.IssueError;
 import ru.projectx.contracts.entity.issuance.IssuedPolicy;
-import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.UskDocument;
 import ru.projectx.contracts.exception.ContractViolationException;
 import ru.projectx.contracts.repository.issuance.PrintedFormRepository;
@@ -54,7 +54,7 @@ public class UskResultRecording<R extends IssuanceRecord, S extends IssuanceStat
         applyResult(id, now, record -> {
             kind.completion().issue(record, issued, now);
             forms.saveAll(documents.stream()
-                    .map(document -> PrintedForm.issuedFor(kind.owner().apply(record.id()), document, now))
+                    .map(document -> PrintedForms.issuedFor(kind.owner().apply(record.id()), document, now))
                     .toList());
         });
     }

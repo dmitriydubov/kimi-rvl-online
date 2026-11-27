@@ -19,8 +19,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import ru.projectx.contracts.entity.contract.Contract;
+import ru.projectx.contracts.entity.document.AttachmentOwners;
 import ru.projectx.contracts.entity.document.ParticipantAttachment;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.StoredFile;
 import ru.projectx.contracts.exception.CertificateKeyMissingException;
 import ru.projectx.contracts.exception.CertificateMissingException;
@@ -101,6 +103,8 @@ class KmContractCertificatesTest {
     @Test
     void certificateRecordWithoutAnObject_breaksThePrerequisitesAsAnInternalFailureWithoutAskingTheStorage() {
         PrintedForm withoutObject = mock();
+        given(withoutObject.docType()).willReturn(ru.projectx.contracts.entity.document.PrintedFormType.MEDICAL_CERTIFICATE);
+        given(withoutObject.deletedAt()).willReturn(Optional.empty());
         given(withoutObject.storedFile()).willReturn(Optional.empty());
         given(forms.findByAttachmentIndividualRequestIdAndAttachmentParticipantIdOrderByCreatedAtAscIdAsc(Tasks.REQUEST,
                 Tasks.SPOUSE)).willReturn(List.of(withoutObject));
@@ -123,7 +127,7 @@ class KmContractCertificatesTest {
     }
 
     private static PrintedForm certificate(StoredFile file) {
-        return PrintedForm.receivedCertificate(new ParticipantAttachment(Tasks.REQUEST, Tasks.SPOUSE, UUID.randomUUID()),
+        return PrintedForms.receivedCertificate(AttachmentOwners.certificate(Tasks.REQUEST, Tasks.SPOUSE, UUID.randomUUID()),
                 file, NOW);
     }
 }

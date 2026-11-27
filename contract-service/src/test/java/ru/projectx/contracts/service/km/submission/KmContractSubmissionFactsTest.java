@@ -18,10 +18,12 @@ import ru.projectx.contracts.entity.contract.Contract;
 import ru.projectx.contracts.entity.contract.ContractAcceptance;
 import ru.projectx.contracts.entity.party.ContractPerson;
 import ru.projectx.contracts.entity.contract.OfferAcceptance;
+import ru.projectx.contracts.entity.document.AttachmentOwners;
 import ru.projectx.contracts.entity.document.ParticipantAttachment;
 import ru.projectx.contracts.entity.party.PersonOwner;
 import ru.projectx.contracts.entity.party.PersonRole;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.PrintedFormType;
 import ru.projectx.contracts.entity.document.StoredFile;
 import ru.projectx.contracts.entity.document.UskDocument;
@@ -118,8 +120,9 @@ class KmContractSubmissionFactsTest {
 
     @Test
     void certificateRecordWithoutAnObject_isIllegalState() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.contract(CONTRACT_ID),
-                new UskDocument(PrintedFormType.POLICY, "https://1c-usk.example/p.pdf", null), NOW);
+        PrintedForm form = PrintedForms.receivedAttachment(AttachmentOwners.certificate(Tasks.REQUEST, Tasks.SPOUSE,
+                UUID.randomUUID()), PrintedFormType.MEDICAL_CERTIFICATE, new StoredFile("k", "h", 1, "image/png"), NOW);
+        ReflectionTestUtils.setField(form, "fileKey", null);
         ReflectionTestUtils.setField(form, "id", FIRST_DOCUMENT);
         given(forms.findByAttachmentIndividualRequestIdAndAttachmentParticipantIdOrderByCreatedAtAscIdAsc(Tasks.REQUEST,
                 Tasks.SPOUSE)).willReturn(List.of(form));
@@ -133,7 +136,7 @@ class KmContractSubmissionFactsTest {
     }
 
     private static PrintedForm certificate(UUID documentId, StoredFile file) {
-        PrintedForm form = PrintedForm.receivedCertificate(new ParticipantAttachment(Tasks.REQUEST, Tasks.SPOUSE,
+        PrintedForm form = PrintedForms.receivedCertificate(AttachmentOwners.certificate(Tasks.REQUEST, Tasks.SPOUSE,
                 UUID.randomUUID()), file, NOW);
         ReflectionTestUtils.setField(form, "id", documentId);
         return form;

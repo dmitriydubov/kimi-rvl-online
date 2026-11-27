@@ -12,7 +12,6 @@ import ru.projectx.contracts.dto.ErrorResponse;
 import ru.projectx.contracts.exception.AttachmentConflictException;
 import ru.projectx.contracts.exception.AttachmentDefect;
 import ru.projectx.contracts.exception.AttachmentRejectedException;
-import ru.projectx.contracts.exception.ParticipantNotFoundException;
 import ru.projectx.contracts.exception.RequestCancelledException;
 import ru.projectx.contracts.exception.RequestNotFoundException;
 import ru.projectx.contracts.exception.StorageUnavailableException;
@@ -31,11 +30,6 @@ public class DomainErrorAdvice {
     }
 
     @ExceptionHandler
-    public ResponseEntity<ErrorResponse> participantNotFound(ParticipantNotFoundException notFound) {
-        return ApiErrors.of(HttpStatus.NOT_FOUND, "PARTICIPANT_NOT_FOUND", "участника нет в составе заявки");
-    }
-
-    @ExceptionHandler
     public ResponseEntity<ErrorResponse> requestCancelled(RequestCancelledException cancelled) {
         return ApiErrors.of(HttpStatus.CONFLICT, "INVALID_STATE", "работа по заявке прекращена");
     }
@@ -43,7 +37,7 @@ public class DomainErrorAdvice {
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> attachmentConflict(AttachmentConflictException conflict) {
         return ApiErrors.of(HttpStatus.CONFLICT, "ATTACHMENT_CONFLICT",
-                "вложение уже принято с другим содержимым или по другому участнику");
+                "вложение уже принято с другим содержимым, владельцем или видом либо удалено");
     }
 
     @ExceptionHandler

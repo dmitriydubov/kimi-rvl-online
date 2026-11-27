@@ -9,9 +9,11 @@ import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import ru.projectx.contracts.dto.AttachmentResponse;
+import ru.projectx.contracts.entity.document.AttachmentOwners;
 import ru.projectx.contracts.entity.document.ParticipantAttachment;
 import ru.projectx.contracts.entity.party.PersonOwner;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.PrintedFormType;
 import ru.projectx.contracts.entity.document.StoredFile;
 import ru.projectx.contracts.entity.document.UskDocument;
@@ -22,8 +24,8 @@ class AttachmentResponsesTest {
 
     @Test
     void certificate_isAnsweredWithItsOwnerAndFile() {
-        PrintedForm certificate = PrintedForm.receivedCertificate(
-                new ParticipantAttachment(Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT),
+        PrintedForm certificate = PrintedForms.receivedCertificate(
+                AttachmentOwners.certificate(Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT),
                 new StoredFile("certificates/f/a.png", Uploads.CONTENT_HASH, 76, "image/png"), NOW);
 
         assertThat(AttachmentResponses.of(certificate)).isEqualTo(new AttachmentResponse(certificate.id(),
@@ -32,7 +34,7 @@ class AttachmentResponsesTest {
 
     @Test
     void policyForm_isNoCertificate() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(Uploads.PARTICIPANT),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(Uploads.PARTICIPANT),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.example.test/lm.pdf", 1L), NOW);
 
         assertThatThrownBy(() -> AttachmentResponses.of(form)).isInstanceOf(IllegalStateException.class)
@@ -43,7 +45,7 @@ class AttachmentResponsesTest {
     void certificateWithoutFile_isNotAnswered() {
         PrintedForm certificate = mock();
         given(certificate.attachment()).willReturn(Optional.of(
-                new ParticipantAttachment(Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT)));
+                AttachmentOwners.certificate(Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT)));
         given(certificate.storedFile()).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> AttachmentResponses.of(certificate)).isInstanceOf(IllegalStateException.class)

@@ -28,6 +28,7 @@ public class InternalApiSteps {
     }
 
     @Тогда("Договоры ответили на загрузку справки {int}:")
+    @Тогда("Договоры ответили на загрузку согласия {int}:")
     public void answeredUpload(int status, DataTable fields) {
         AttachmentCalls.Answer answer = calls.last();
         assertThat(answer.status()).as("код ответа, тело %s", answer.body()).isEqualTo(status);

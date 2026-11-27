@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
+
 import ru.projectx.contracts.dto.AttachmentResponse;
 import ru.projectx.contracts.service.storage.AttachmentUploads;
-import ru.projectx.contracts.service.storage.CertificateUpload;
 
 @InternalApi
 public class AttachmentController {
@@ -27,7 +27,6 @@ public class AttachmentController {
             @PathVariable("participant_id") UUID participantId,
             @RequestParam("attachment_id") UUID attachmentId,
             @RequestPart("file") MultipartFile file) {
-        return uploads.receive(new CertificateUpload(individualRequestId, participantId, attachmentId,
-                file.getContentType(), file.getSize(), file::getInputStream));
+        return uploads.receive(UploadRequests.certificate(individualRequestId, participantId, attachmentId, file));
     }
 }

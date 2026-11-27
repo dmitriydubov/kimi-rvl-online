@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import ru.projectx.contracts.dto.ErrorResponse;
 import ru.projectx.contracts.exception.AttachmentDefect;
+import ru.projectx.contracts.exception.AttachmentFormatException;
 import ru.projectx.contracts.service.storage.AttachmentMetrics;
 
 @RestControllerAdvice
@@ -33,6 +34,11 @@ public class RequestFormatAdvice {
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> invalidValue(MethodArgumentTypeMismatchException invalid) {
         return ApiErrors.invalidField(invalid.getName(), INVALID_FORMAT);
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ErrorResponse> invalidAttachmentPart(AttachmentFormatException invalid) {
+        return ApiErrors.invalidField(invalid.field(), INVALID_FORMAT);
     }
 
     @ExceptionHandler

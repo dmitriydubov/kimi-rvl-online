@@ -21,6 +21,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
@@ -33,9 +35,7 @@ import ru.projectx.contracts.dto.AttachmentResponse;
 import ru.projectx.contracts.exception.AttachmentConflictException;
 import ru.projectx.contracts.exception.AttachmentDefect;
 import ru.projectx.contracts.exception.AttachmentRejectedException;
-import ru.projectx.contracts.exception.ParticipantNotFoundException;
 import ru.projectx.contracts.exception.RequestCancelledException;
-import ru.projectx.contracts.exception.RequestNotFoundException;
 import ru.projectx.contracts.exception.StorageUnavailableException;
 import ru.projectx.contracts.service.RequestIds;
 import ru.projectx.contracts.service.storage.AttachmentMetrics;
@@ -60,6 +60,7 @@ class AttachmentControllerTest {
             .setControllerAdvice(new RequestFormatAdvice(metrics), new DomainErrorAdvice(), new UnexpectedErrorAdvice())
             .setMessageConverters(new JacksonJsonHttpMessageConverter(JsonMapper.builder()
                     .propertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE).build()))
+            .addInterceptors(new MultipartInterceptor())
             .addFilters(new RequestIdFilter())
             .build();
 
@@ -131,6 +132,38 @@ class AttachmentControllerTest {
                 .andExpect(jsonPath("$.error.details[0].reason").value("обязательное поле не передано"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"document.txt", ""})
+    void attachmentPartWithFilename_isValidationErrorWithoutRejectedMetric(String filename) throws Exception {
+        MockMultipartFile attachment = new MockMultipartFile("attachment_id", filename, MediaType.TEXT_PLAIN_VALUE,
+                ATTACHMENT.toString().getBytes(StandardCharsets.UTF_8));
+
+        mvc.perform(multipart(PATH, REQUEST, PARTICIPANT).file(attachment).file(file("image/jpeg"))
+                        .header(RequestIds.HEADER, TRACE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.details[0].field").value("attachment_id"))
+                .andExpect(jsonPath("$.error.details[0].reason").value("неверный формат"));
+
+        verifyNoInteractions(uploads);
+        assertThat(meters.find("contracts.attachments.rejected").counter()).isNull();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = "   ")
+    void fileWithoutANonBlankFilename_isValidationErrorWithoutRejectedMetric(String filename) throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", filename, "image/jpeg", CONTENT);
+
+        mvc.perform(multipart(PATH, REQUEST, PARTICIPANT).file(file).param("attachment_id", ATTACHMENT.toString())
+                        .header(RequestIds.HEADER, TRACE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.details[0].field").value("file"))
+                .andExpect(jsonPath("$.error.details[0].reason").value("неверный формат"));
+
+        verifyNoInteractions(uploads);
+        assertThat(meters.find("contracts.attachments.rejected").counter()).isNull();
+    }
+
     @Test
     void bodyThatIsNotMultipart_isValidationErrorWithoutFields() throws Exception {
         mvc.perform(post(PATH, REQUEST, PARTICIPANT).contentType(MediaType.APPLICATION_JSON)
@@ -158,17 +191,6 @@ class AttachmentControllerTest {
     }
 
     @Test
-    void unknownRequest_isNotFound() throws Exception {
-        expectError(new RequestNotFoundException(REQUEST), 404, "REQUEST_NOT_FOUND", "задачи на выпуск по заявке нет");
-    }
-
-    @Test
-    void unknownParticipant_isNotFound() throws Exception {
-        expectError(new ParticipantNotFoundException(REQUEST, PARTICIPANT), 404, "PARTICIPANT_NOT_FOUND",
-                "участника нет в составе заявки");
-    }
-
-    @Test
     void cancelledRequest_isInvalidState() throws Exception {
         expectError(new RequestCancelledException(REQUEST), 409, "INVALID_STATE", "работа по заявке прекращена");
     }
@@ -176,7 +198,7 @@ class AttachmentControllerTest {
     @Test
     void conflictingAttachment_isAttachmentConflict() throws Exception {
         expectError(new AttachmentConflictException(ATTACHMENT), 409, "ATTACHMENT_CONFLICT",
-                "вложение уже принято с другим содержимым или по другому участнику");
+                "вложение уже принято с другим содержимым, владельцем или видом либо удалено");
     }
 
     @Test

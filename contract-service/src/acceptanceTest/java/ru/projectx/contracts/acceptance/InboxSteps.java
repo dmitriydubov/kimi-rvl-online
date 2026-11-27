@@ -181,7 +181,9 @@ public class InboxSteps {
         processor.processDue();
         published.passDone();
         pending.forEach(entry -> assertThat(entry(entry.messageId().toString()).outcome())
-                .as("исход сообщения %s", entry.messageId()).isIn(outcomesOfProcessed(entry.eventType())));
+                .as("исход сообщения %s; причина %s", entry.messageId(),
+                        entry(entry.messageId().toString()).errorMessage())
+                .isIn(outcomesOfProcessed(entry.eventType())));
     }
 
     private void awaitRepeatsTaken() {

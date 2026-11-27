@@ -101,6 +101,7 @@ public class CertificateStorageSteps {
     }
 
     @Тогда("содержимое объекта справки по вложению {string} в хранилище совпадает с отправленным")
+    @Тогда("содержимое объекта согласия по вложению {string} в хранилище совпадает с отправленным")
     public void objectContent(String attachment) throws Exception {
         String key = records.byAttachment(attachment).key();
         assertThat(storage.object(settings.bucket(), key)).as("объект %s", key)

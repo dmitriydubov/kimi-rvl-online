@@ -76,10 +76,18 @@ public class PrintedForm {
     @Embedded
     private ParticipantAttachment attachment;
 
+    @Nullable
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
+    @Nullable
+    @Column(name = "deleted_request_id")
+    private String deletedRequestId;
+
     protected PrintedForm() {
     }
 
-    private PrintedForm(PersonOwner owner, UskDocument document, Instant now) {
+    PrintedForm(PersonOwner owner, UskDocument document, Instant now) {
         this.contractId = owner.contractId();
         this.lmPolicyId = owner.lmPolicyId();
         this.kind = PrintedFormKind.FINAL;
@@ -90,24 +98,16 @@ public class PrintedForm {
         this.createdAt = now;
     }
 
-    private PrintedForm(ParticipantAttachment attachment, StoredFile file, Instant now) {
+    PrintedForm(ParticipantAttachment attachment, PrintedFormType type, StoredFile file, Instant now) {
         this.attachment = attachment;
         this.kind = PrintedFormKind.FINAL;
-        this.docType = PrintedFormType.MEDICAL_CERTIFICATE;
+        this.docType = type;
         this.version = FIRST_VERSION;
         this.fileKey = file.key();
         this.fileHash = file.hash();
         this.fileSize = file.size();
         this.contentType = file.contentType();
         this.createdAt = now;
-    }
-
-    public static PrintedForm issuedFor(PersonOwner owner, UskDocument document, Instant now) {
-        return new PrintedForm(owner, document, now);
-    }
-
-    public static PrintedForm receivedCertificate(ParticipantAttachment attachment, StoredFile file, Instant now) {
-        return new PrintedForm(attachment, file, now);
     }
 
     public UUID id() {
@@ -149,5 +149,13 @@ public class PrintedForm {
 
     public int version() {
         return version;
+    }
+
+    public Optional<Instant> deletedAt() {
+        return Optional.ofNullable(deletedAt);
+    }
+
+    public Optional<String> deletedRequestId() {
+        return Optional.ofNullable(deletedRequestId);
     }
 }

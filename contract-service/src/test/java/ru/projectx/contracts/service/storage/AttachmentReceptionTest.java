@@ -25,6 +25,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.util.unit.DataSize;
 import ru.projectx.contracts.config.storage.AttachmentProperties;
 import ru.projectx.contracts.dto.AttachmentResponse;
+import ru.projectx.contracts.entity.document.AttachmentOwners;
+import ru.projectx.contracts.entity.document.PrintedForm;
 import ru.projectx.contracts.entity.document.StoredFile;
 import ru.projectx.contracts.exception.AttachmentConflictException;
 import ru.projectx.contracts.exception.AttachmentRejectedException;
@@ -36,6 +38,7 @@ class AttachmentReceptionTest {
     private static final AttachmentResponse RESPONSE = new AttachmentResponse(UUID.randomUUID(), Uploads.ATTACHMENT,
             Uploads.REQUEST, Uploads.PARTICIPANT, "image/jpeg", 76, Uploads.CONTENT_HASH,
             Instant.parse("2026-02-10T07:05:00Z"));
+    private static final PrintedForm PRIOR = prior();
 
     private final SimpleMeterRegistry meters = new SimpleMeterRegistry();
     private final AttachmentMetrics metrics = new AttachmentMetrics(meters);
@@ -49,24 +52,25 @@ class AttachmentReceptionTest {
     @Test
     void newCertificate_isStoredUnderANewKeyThenRegisteredAndCounted() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
         when(keys.next(Uploads.ATTACHMENT, "jpg")).thenReturn(KEY);
-        when(registry.register(eq(upload), any(StoredFile.class))).thenReturn(RESPONSE);
+        when(registry.register(any(AttachmentCommand.class), any(StoredFile.class))).thenReturn(PRIOR);
 
-        assertThat(reception.receive(upload)).isSameAs(RESPONSE);
+        assertThat(reception.receive(upload)).isEqualTo(RESPONSE);
 
         StoredFile expected = new StoredFile(KEY, Uploads.CONTENT_HASH, 76, "image/jpeg");
         InOrder order = inOrder(store, registry);
         order.verify(store).store(eq(expected), any(ContentSource.class));
-        order.verify(registry).register(upload, expected);
+        order.verify(registry).register(AttachmentCommands.of(upload), expected);
         assertThat(meters.get("contracts.attachments.stored").counter().count()).isEqualTo(1);
     }
 
     @Test
     void storedObject_receivesTheUploadedContent() throws IOException {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
         when(keys.next(Uploads.ATTACHMENT, "jpg")).thenReturn(KEY);
+        when(registry.register(any(AttachmentCommand.class), any(StoredFile.class))).thenReturn(PRIOR);
 
         reception.receive(upload);
 
@@ -78,9 +82,9 @@ class AttachmentReceptionTest {
     @Test
     void repeatedAttachment_returnsThePriorRecordWithoutStoringOrCounting() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.of(RESPONSE));
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.of(PRIOR));
 
-        assertThat(reception.receive(upload)).isSameAs(RESPONSE);
+        assertThat(reception.receive(upload)).isEqualTo(RESPONSE);
 
         verifyNoInteractions(store, keys);
         verify(registry, never()).register(any(), any());
@@ -98,7 +102,7 @@ class AttachmentReceptionTest {
     @Test
     void conflictingAttachment_isNotStored() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenThrow(new AttachmentConflictException(Uploads.ATTACHMENT));
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenThrow(new AttachmentConflictException(Uploads.ATTACHMENT));
 
         assertThatThrownBy(() -> reception.receive(upload)).isInstanceOf(AttachmentConflictException.class);
 
@@ -108,7 +112,7 @@ class AttachmentReceptionTest {
     @Test
     void unavailableStorage_isCountedAndRethrownWithoutRegistering() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
         when(keys.next(Uploads.ATTACHMENT, "jpg")).thenReturn(KEY);
         StorageUnavailableException unavailable = new StorageUnavailableException(new IOException("refused"));
         doThrow(unavailable).when(store).store(any(), any());
@@ -122,23 +126,33 @@ class AttachmentReceptionTest {
     @Test
     void concurrentUploadOfTheSameAttachment_returnsTheWinningRecordWithoutCounting() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.empty())
-                .thenReturn(Optional.of(RESPONSE));
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.empty())
+                .thenReturn(Optional.of(PRIOR));
         when(keys.next(Uploads.ATTACHMENT, "jpg")).thenReturn(KEY);
-        when(registry.register(eq(upload), any())).thenThrow(new DataIntegrityViolationException("uq"));
+        when(registry.register(any(AttachmentCommand.class), any())).thenThrow(new DataIntegrityViolationException("uq"));
 
-        assertThat(reception.receive(upload)).isSameAs(RESPONSE);
+        assertThat(reception.receive(upload)).isEqualTo(RESPONSE);
 
         assertThat(meters.find("contracts.attachments.stored").counter()).isNull();
+    }
+
+    private static PrintedForm prior() {
+        PrintedForm form = mock(PrintedForm.class);
+        when(form.id()).thenReturn(RESPONSE.documentId());
+        when(form.attachment()).thenReturn(Optional.of(AttachmentOwners.certificate(
+                Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT)));
+        when(form.storedFile()).thenReturn(Optional.of(new StoredFile(KEY, Uploads.CONTENT_HASH, 76, "image/jpeg")));
+        when(form.createdAt()).thenReturn(RESPONSE.createdAt());
+        return form;
     }
 
     @Test
     void integrityViolationWithoutAWinningRecord_isRethrown() {
         CertificateUpload upload = Uploads.jpeg();
-        when(registry.accepted(upload, Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
+        when(registry.accepted(AttachmentCommands.of(upload), Uploads.CONTENT_HASH)).thenReturn(Optional.empty());
         when(keys.next(Uploads.ATTACHMENT, "jpg")).thenReturn(KEY);
         DataIntegrityViolationException violation = new DataIntegrityViolationException("fk");
-        when(registry.register(eq(upload), any())).thenThrow(violation);
+        when(registry.register(any(AttachmentCommand.class), any())).thenThrow(violation);
 
         assertThatThrownBy(() -> reception.receive(upload)).isSameAs(violation);
     }
