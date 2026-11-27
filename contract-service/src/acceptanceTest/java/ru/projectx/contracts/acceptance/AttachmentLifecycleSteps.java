@@ -44,7 +44,7 @@ public class AttachmentLifecycleSteps {
     @Дано("запись справки по вложению {string} помечена удалённой по запросу {string}")
     @Дано("запись согласия по вложению {string} помечена удалённой по запросу {string}")
     public void markDeleted(String attachment, String requestId) {
-        records.markDeleted(attachment, requestId);
+        records.markDeleted(attachment, UploadFixtures.deleteRequest(requestId));
     }
 
     @Тогда("запись справки по вложению {string} остаётся удалённой по запросу {string}")

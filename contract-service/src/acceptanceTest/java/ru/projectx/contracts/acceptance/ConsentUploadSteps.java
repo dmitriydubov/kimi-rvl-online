@@ -31,8 +31,8 @@ public class ConsentUploadSteps {
             DataTable table) throws IOException, InterruptedException {
         AttachmentRequest consent = AttachmentUploadSteps.standardConsent(policy, familyMember, table.asMap());
         switch (kind) {
-            case "справка" -> calls.send(AttachmentRequest.certificate(request, participant, consent.attachmentPart(),
-                    consent.filePart(), java.util.Optional.empty(), true));
+            case "справка" -> calls.send(AttachmentRequest.certificate(request, UploadFixtures.participant(participant),
+                    consent.attachmentPart(), consent.filePart(), java.util.Optional.empty(), true));
             case "согласие" -> calls.send(consent);
             default -> throw new AssertionError("вида вложения «" + kind + "» нет в перечне шага");
         }

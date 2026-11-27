@@ -85,8 +85,9 @@ public class AttachmentUploadSteps {
     static AttachmentRequest standardConsent(String policy, String familyMember, Map<String, String> fields) {
         byte[] content = Optional.ofNullable(fields.get("содержимое")).map(AttachmentUploadSteps::content)
                 .orElseGet(() -> filler(Integer.parseInt(required(fields, "размер"))));
-        return AttachmentRequest.consent(policy, familyMember, Optional.of(required(fields, "вложение")),
-                Optional.of(new AttachmentRequest.FilePart(Optional.of(required(fields, "имя файла")),
+        return AttachmentRequest.consent(UploadFixtures.policy(policy), UploadFixtures.familyMember(familyMember),
+                Optional.of(UploadFixtures.attachment(fields)),
+                Optional.of(new AttachmentRequest.FilePart(Optional.of(UploadFixtures.filename(fields)),
                         required(fields, "тип"), content)));
     }
 
@@ -98,13 +99,14 @@ public class AttachmentUploadSteps {
     private static AttachmentRequest request(String request, String participant, Map<String, String> fields) {
         byte[] content = Optional.ofNullable(fields.get("содержимое")).map(AttachmentUploadSteps::content)
                 .orElseGet(() -> filler(Integer.parseInt(required(fields, "размер"))));
-        return AttachmentRequest.certificate(request, participant, Optional.of(required(fields, "вложение")),
-                Optional.of(new AttachmentRequest.FilePart(Optional.of(required(fields, "имя файла")),
+        return AttachmentRequest.certificate(request, UploadFixtures.participant(participant),
+                Optional.of(UploadFixtures.attachment(fields)),
+                Optional.of(new AttachmentRequest.FilePart(Optional.of(UploadFixtures.filename(fields)),
                         required(fields, "тип"), content)), Optional.empty(), true);
     }
 
     private static AttachmentRequest standard(String request, String participant) {
-        return AttachmentRequest.certificate(request, participant, Optional.of(ATTACHMENT),
+        return AttachmentRequest.certificate(request, UploadFixtures.participant(participant), Optional.of(ATTACHMENT),
                 Optional.of(new AttachmentRequest.FilePart(Optional.of(FILE_NAME), JPEG, content(CONTENT))),
                 Optional.empty(), true);
     }
@@ -128,7 +130,7 @@ public class AttachmentUploadSteps {
     }
 
     private static byte[] content(String text) {
-        return text.getBytes(StandardCharsets.UTF_8);
+        return UploadFixtures.content(text).getBytes(StandardCharsets.UTF_8);
     }
 
     private static byte[] filler(int size) {
