@@ -51,4 +51,24 @@ class AttachmentResponsesTest {
         assertThatThrownBy(() -> AttachmentResponses.of(certificate)).isInstanceOf(IllegalStateException.class)
                 .hasMessageEndingWith("нет файла");
     }
+
+    @Test
+    void policyForm_isNoFamilyConsent() {
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(Uploads.PARTICIPANT),
+                new UskDocument(PrintedFormType.POLICY, "https://s3.example.test/lm.pdf", 1L), NOW);
+
+        assertThatThrownBy(() -> AttachmentResponses.ofConsent(form)).isInstanceOf(IllegalStateException.class)
+                .hasMessageEndingWith("не согласие члена семьи");
+    }
+
+    @Test
+    void consentWithoutFile_isNotAnswered() {
+        PrintedForm consent = mock();
+        given(consent.attachment()).willReturn(Optional.of(
+                AttachmentOwners.consent(Uploads.REQUEST, Uploads.PARTICIPANT, Uploads.ATTACHMENT)));
+        given(consent.storedFile()).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> AttachmentResponses.ofConsent(consent)).isInstanceOf(IllegalStateException.class)
+                .hasMessageEndingWith("нет файла");
+    }
 }
