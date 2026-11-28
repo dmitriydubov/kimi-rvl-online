@@ -130,7 +130,7 @@ final class StandStorage {
 
     void recover() {
         switch (state) {
-            case STOPPED -> docker().startContainerCmd(container.getContainerId()).exec();
+            case STOPPED -> await("контейнер хранилища запущен").atMost(RECOVERY).ignoreExceptions().until(this::start);
             case PAUSED -> docker().unpauseContainerCmd(container.getContainerId()).exec();
             case RUNNING -> {
                 return;
@@ -139,6 +139,11 @@ final class StandStorage {
         }
         state = State.RUNNING;
         await("хранилище стенда снова отвечает").atMost(RECOVERY).ignoreExceptions().until(this::answers);
+    }
+
+    private boolean start() {
+        docker().startContainerCmd(container.getContainerId()).exec();
+        return true;
     }
 
     private boolean answers() throws Exception {
