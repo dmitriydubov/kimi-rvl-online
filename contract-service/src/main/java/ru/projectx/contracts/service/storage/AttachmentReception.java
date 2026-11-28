@@ -37,6 +37,7 @@ public class AttachmentReception implements AttachmentUploads, ConsentUploads {
     }
 
     private PrintedForm receive(AttachmentCommand upload) {
+        registry.ensureOpen(upload);
         AttachmentFiles.AcceptedFile accepted = files.accept(upload);
         String fileHash = ContentDigests.sha256(upload.content());
         return registry.accepted(upload, fileHash).orElseGet(() -> stored(upload, new StoredFile(

@@ -8,6 +8,7 @@ import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentConversionNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
@@ -33,12 +34,21 @@ public class RequestFormatAdvice {
 
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> invalidValue(MethodArgumentTypeMismatchException invalid) {
-        return ApiErrors.invalidField(invalid.getName(), INVALID_FORMAT);
+        return invalidField(invalid.getName());
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ErrorResponse> unsupportedConversion(MethodArgumentConversionNotSupportedException invalid) {
+        return invalidField(invalid.getName());
     }
 
     @ExceptionHandler
     public ResponseEntity<ErrorResponse> invalidAttachmentPart(AttachmentFormatException invalid) {
-        return ApiErrors.invalidField(invalid.field(), INVALID_FORMAT);
+        return invalidField(invalid.field());
+    }
+
+    private static ResponseEntity<ErrorResponse> invalidField(String field) {
+        return ApiErrors.invalidField(field, INVALID_FORMAT);
     }
 
     @ExceptionHandler

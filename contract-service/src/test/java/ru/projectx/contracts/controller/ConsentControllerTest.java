@@ -92,7 +92,11 @@ class ConsentControllerTest {
     @CsvSource({
         "not-a-guid, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, policy_id",
         "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, not-a-guid, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, family_member_id",
-        "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, not-a-guid, attachment_id"})
+        "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, not-a-guid, attachment_id",
+        "1-1-1-1-1, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, policy_id",
+        "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, 1-1-1-1-1, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, family_member_id",
+        "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, 1-1-1-1-1, attachment_id",
+        "0f4b8e2a-6c13-4d7e-b9a1-2e5c7d3f8a64, 4d8e1f2a-3b4c-4d5e-9f60-718293a4b5c6, ' 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21 ', attachment_id"})
     void malformedIdentifier_namesTheExactField(String policy, String family, String attachment, String field)
             throws Exception {
         mvc.perform(upload(policy, family, attachment, file("name.jpg")))

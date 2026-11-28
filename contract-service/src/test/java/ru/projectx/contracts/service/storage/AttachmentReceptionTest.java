@@ -18,7 +18,10 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,6 +33,7 @@ import ru.projectx.contracts.entity.document.PrintedForm;
 import ru.projectx.contracts.entity.document.StoredFile;
 import ru.projectx.contracts.exception.AttachmentConflictException;
 import ru.projectx.contracts.exception.AttachmentRejectedException;
+import ru.projectx.contracts.exception.RequestCancelledException;
 import ru.projectx.contracts.exception.StorageUnavailableException;
 
 class AttachmentReceptionTest {
@@ -92,11 +96,26 @@ class AttachmentReceptionTest {
     }
 
     @Test
-    void rejectedFile_touchesNeitherRegistryNorStorage() {
-        assertThatThrownBy(() -> reception.receive(Uploads.of(Uploads.PARTICIPANT, "image/png", Uploads.CONTENT)))
-                .isInstanceOf(AttachmentRejectedException.class);
+    void rejectedFile_afterTheOpenCheckTouchesNeitherAcceptedLookupNorStorage() {
+        CertificateUpload upload = Uploads.of(Uploads.PARTICIPANT, "image/png", Uploads.CONTENT);
 
-        verifyNoInteractions(registry, store, keys);
+        assertThatThrownBy(() -> reception.receive(upload)).isInstanceOf(AttachmentRejectedException.class);
+
+        verify(registry).ensureOpen(AttachmentCommands.of(upload));
+        verify(registry, never()).accepted(any(), any());
+        verifyNoInteractions(store, keys);
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidFiles")
+    void cancelledRequest_winsOverFileValidationWithoutRejectedMetric(CertificateUpload upload) {
+        doThrow(new RequestCancelledException(Uploads.REQUEST)).when(registry).ensureOpen(AttachmentCommands.of(upload));
+
+        assertThatThrownBy(() -> reception.receive(upload)).isInstanceOf(RequestCancelledException.class);
+
+        verify(registry, never()).accepted(any(), any());
+        verifyNoInteractions(store, keys);
+        assertThat(meters.find("contracts.attachments.rejected").counter()).isNull();
     }
 
     @Test
@@ -134,6 +153,11 @@ class AttachmentReceptionTest {
         assertThat(reception.receive(upload)).isEqualTo(RESPONSE);
 
         assertThat(meters.find("contracts.attachments.stored").counter()).isNull();
+    }
+
+    private static Stream<CertificateUpload> invalidFiles() {
+        return Stream.of(Uploads.sized("image/gif", 76), Uploads.sized("image/png", 0),
+                Uploads.sized("image/png", 5_242_881));
     }
 
     private static PrintedForm prior() {

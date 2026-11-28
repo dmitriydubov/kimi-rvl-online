@@ -1,6 +1,5 @@
 package ru.projectx.contracts.controller;
 
-import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,9 +22,9 @@ public class ConsentController {
     @PostMapping(path = "/policies/{policy_id}/family-members/{family_member_id}/consents",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ConsentResponse upload(
-            @PathVariable("policy_id") UUID policyId,
-            @PathVariable("family_member_id") UUID familyMemberId,
-            @RequestParam("attachment_id") UUID attachmentId,
+            @PathVariable("policy_id") String policyId,
+            @PathVariable("family_member_id") String familyMemberId,
+            @RequestParam("attachment_id") String attachmentId,
             @RequestPart("file") MultipartFile file) {
         return uploads.receive(UploadRequests.consent(policyId, familyMemberId, attachmentId, file));
     }

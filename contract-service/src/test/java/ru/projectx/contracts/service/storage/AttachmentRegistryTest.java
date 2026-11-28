@@ -3,6 +3,7 @@ package ru.projectx.contracts.service.storage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import ru.projectx.contracts.dto.AttachmentResponse;
 import ru.projectx.contracts.entity.issuance.DocumentKind;
 import ru.projectx.contracts.entity.issuance.IssuanceRequest;
@@ -49,6 +51,20 @@ class AttachmentRegistryTest {
         when(documents.findByAttachmentAttachmentId(Uploads.ATTACHMENT)).thenReturn(Optional.empty());
 
         assertThat(registry.accepted(AttachmentCommands.of(Uploads.jpeg()), Uploads.CONTENT_HASH).map(AttachmentResponses::of)).isEmpty();
+        InOrder order = inOrder(requests);
+        order.verify(requests).lockById(Uploads.REQUEST);
+        order.verify(requests).findById(Uploads.REQUEST);
+    }
+
+    @Test
+    void ensureOpen_checksTheRequestUnderLock() {
+        knownRequest(false, Uploads.PARTICIPANT);
+
+        registry.ensureOpen(AttachmentCommands.of(Uploads.jpeg()));
+
+        InOrder order = inOrder(requests);
+        order.verify(requests).lockById(Uploads.REQUEST);
+        order.verify(requests).findById(Uploads.REQUEST);
     }
 
     @Test

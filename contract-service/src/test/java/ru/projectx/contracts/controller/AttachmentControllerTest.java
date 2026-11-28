@@ -102,7 +102,11 @@ class AttachmentControllerTest {
     @CsvSource({
         "not-a-guid, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, individual_request_id, неверный формат",
         "61a7982c-a0b4-4bbf-9527-60b40b752803, not-a-guid, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, participant_id, неверный формат",
-        "61a7982c-a0b4-4bbf-9527-60b40b752803, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, not-a-guid, attachment_id, неверный формат"})
+        "61a7982c-a0b4-4bbf-9527-60b40b752803, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, not-a-guid, attachment_id, неверный формат",
+        "1-1-1-1-1, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, individual_request_id, неверный формат",
+        "61a7982c-a0b4-4bbf-9527-60b40b752803, 1-1-1-1-1, 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21, participant_id, неверный формат",
+        "61a7982c-a0b4-4bbf-9527-60b40b752803, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, 1-1-1-1-1, attachment_id, неверный формат",
+        "61a7982c-a0b4-4bbf-9527-60b40b752803, 6778e8c2-985a-4d54-9bd3-0f6403b104d6, ' 3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21 ', attachment_id, неверный формат"})
     void malformedIdentifier_isValidationErrorNamingTheField(String request, String participant, String attachment,
             String field, String reason) throws Exception {
         mvc.perform(upload(request, participant, attachment, file("image/jpeg")))

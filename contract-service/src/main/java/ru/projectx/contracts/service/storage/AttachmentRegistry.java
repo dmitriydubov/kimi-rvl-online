@@ -28,7 +28,12 @@ public class AttachmentRegistry {
         this.clock = clock;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
+    public void ensureOpen(AttachmentCommand upload) {
+        ensureOpenFor(upload);
+    }
+
+    @Transactional
     public Optional<PrintedForm> accepted(AttachmentCommand upload, String fileHash) {
         ensureOpenFor(upload);
         return documents.findByAttachmentAttachmentId(upload.owner().attachmentId())
@@ -47,6 +52,7 @@ public class AttachmentRegistry {
         if (requestId == null) {
             return;
         }
+        requests.lockById(requestId);
         requests.findById(requestId).filter(IssuanceRequest::cancelled)
                 .ifPresent(request -> {
                     throw new RequestCancelledException(requestId);
