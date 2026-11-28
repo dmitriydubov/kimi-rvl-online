@@ -80,3 +80,4 @@ ingress:
   resources:
     - internal/v1/requests
     - internal/v1/contracts
+    - internal/v1/policies

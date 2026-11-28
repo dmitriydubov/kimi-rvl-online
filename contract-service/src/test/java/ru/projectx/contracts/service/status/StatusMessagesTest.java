@@ -17,6 +17,7 @@ import ru.projectx.contracts.entity.issuance.IssuedPolicy;
 import ru.projectx.contracts.entity.policy.LmPolicy;
 import ru.projectx.contracts.entity.party.PersonOwner;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.PrintedFormType;
 import ru.projectx.contracts.entity.issuance.RequestParticipant;
 import ru.projectx.contracts.entity.document.UskDocument;
@@ -133,7 +134,7 @@ class StatusMessagesTest {
         policy.submit(NOW);
         policy.markIssued(new IssuedPolicy(UUID.fromString("cb904f2a-7d61-4e08-89a5-40b1e3c7f012"), "LM-000012204",
                 UUID.fromString("13ab5388-61ee-4e21-8a46-c325478b78c0"), "0555123456"), NOW);
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(policy.id()), new UskDocument(PrintedFormType.POLICY,
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(policy.id()), new UskDocument(PrintedFormType.POLICY,
                 "https://s3.sogaz.ru/rvl/lm/2026/02/0555123456.pdf", 96256L), NOW);
         ReflectionTestUtils.setField(form, "id", UUID.fromString("01960000-0000-7000-8000-000000000003"));
 
@@ -163,7 +164,7 @@ class StatusMessagesTest {
         contract.submit(NOW);
         contract.markIssued(new IssuedPolicy(UUID.fromString("a71f3c98-4e20-4a55-93b1-5d0c7e2f8814"), "DKM-000004417",
                 UUID.fromString("2c7e9b40-1f5a-4d83-9e6b-0a4c8d2f7e15"), "0987654321"), NOW);
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.contract(contract.id()), new UskDocument(PrintedFormType.CONTRACT,
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.contract(contract.id()), new UskDocument(PrintedFormType.CONTRACT,
                 "https://s3.sogaz.ru/rvl/km/2026/02/DKM-2026-000001.pdf", 205312L), NOW);
         ReflectionTestUtils.setField(form, "id", UUID.fromString("01960000-0000-7000-8000-000000000004"));
 
@@ -207,7 +208,7 @@ class StatusMessagesTest {
     @Test
     void formsOfAnotherPolicy_doNotLeakIntoTheParticipant() {
         LmPolicy policy = Issuances.policy(POLICY_ID, Tasks.CHILD);
-        PrintedForm foreign = PrintedForm.issuedFor(PersonOwner.lmPolicy(UUID.fromString("01960000-0000-7000-8000-000000000009")),
+        PrintedForm foreign = PrintedForms.issuedFor(PersonOwner.lmPolicy(UUID.fromString("01960000-0000-7000-8000-000000000009")),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.sogaz.ru/rvl/lm/other.pdf", null), NOW);
 
         JsonNode participant = json.readTree(messages.write(new IssuanceSnapshot(Tasks.REQUEST, false,

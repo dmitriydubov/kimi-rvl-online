@@ -92,7 +92,7 @@ public class TaskMessages {
     private static void participant(ObjectNode node, Map<String, String> row, int index, String insurerPolicy) {
         boolean relative = "да".equals(StepTables.required(row, "родственник"));
         ParticipantDefaults defaults = DEFAULTS.get(index % DEFAULTS.size());
-        node.put("id", StepTables.required(row, "участник"))
+        node.put("id", UploadFixtures.participant(StepTables.required(row, "участник")))
                 .put("is_relative", relative)
                 .put("policy_id", relative ? null : insurerPolicy)
                 .put("service_external_id", SERVICE)

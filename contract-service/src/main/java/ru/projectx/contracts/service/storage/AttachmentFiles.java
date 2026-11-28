@@ -20,7 +20,7 @@ public class AttachmentFiles {
         this.metrics = metrics;
     }
 
-    public AcceptedFile accept(CertificateUpload upload) {
+    public AcceptedFile accept(AttachmentCommand upload) {
         String type = Optional.ofNullable(upload.contentType()).map(AttachmentFiles::mediaType)
                 .filter(settings.contentTypes()::containsKey)
                 .orElseThrow(() -> rejected(AttachmentDefect.CONTENT_TYPE));

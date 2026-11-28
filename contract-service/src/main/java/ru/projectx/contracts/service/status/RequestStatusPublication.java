@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.projectx.contracts.entity.issuance.IssuanceRequest;
 import ru.projectx.contracts.entity.issuance.RequestParticipant;
 import ru.projectx.contracts.message.MessageMeta;
@@ -49,7 +50,9 @@ public class RequestStatusPublication {
         publishIfChanged(requestOf(before.individualRequestId(), now), before, now);
     }
 
+    @Transactional
     public void afterCancellation(UUID individualRequestId, Instant now) {
+        requests.lockById(individualRequestId);
         IssuanceRequest request = requestOf(individualRequestId, now);
         request.cancel(now);
         record(request, snapshots.current(individualRequestId), now);

@@ -15,9 +15,11 @@ import ru.projectx.contracts.entity.issuance.DocumentKind;
 import ru.projectx.contracts.entity.issuance.IssueError;
 import ru.projectx.contracts.entity.policy.LmPolicy;
 import ru.projectx.contracts.entity.policy.LmPolicyStatus;
+import ru.projectx.contracts.entity.document.AttachmentOwners;
 import ru.projectx.contracts.entity.document.ParticipantAttachment;
 import ru.projectx.contracts.entity.party.PersonOwner;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.PrintedFormType;
 import ru.projectx.contracts.entity.issuance.RequestParticipant;
 import ru.projectx.contracts.entity.document.StoredFile;
@@ -146,8 +148,8 @@ class IssuanceSnapshotTest {
     @Test
     void receivedCertificateOfAParticipant_belongsToNoRecord_andDoesNotBreakTheSnapshot() {
         Contract contract = Issuances.contract(EARLIER, Tasks.SPOUSE, "DKM-2026-000001");
-        PrintedForm certificate = PrintedForm.receivedCertificate(
-                new ParticipantAttachment(Tasks.REQUEST, Tasks.SPOUSE, UUID.fromString("5d0e9a3c-2b7f-4c18-8e6a-1f3b9c7d2e40")),
+        PrintedForm certificate = PrintedForms.receivedCertificate(
+                AttachmentOwners.certificate(Tasks.REQUEST, Tasks.SPOUSE, UUID.fromString("5d0e9a3c-2b7f-4c18-8e6a-1f3b9c7d2e40")),
                 new StoredFile("certificates/61a7/5d0e.pdf", "f".repeat(64), 76L, "application/pdf"), NOW);
         PrintedForm contractForm = formOfContract(contract.id(), "https://s3.sogaz.ru/rvl/km/2026/02/DKM-2026-000001.pdf");
 
@@ -166,11 +168,11 @@ class IssuanceSnapshotTest {
     }
 
     private static PrintedForm issuedForm(UUID policyId, String url) {
-        return PrintedForm.issuedFor(PersonOwner.lmPolicy(policyId), new UskDocument(PrintedFormType.POLICY, url, 96256L), NOW);
+        return PrintedForms.issuedFor(PersonOwner.lmPolicy(policyId), new UskDocument(PrintedFormType.POLICY, url, 96256L), NOW);
     }
 
     private static PrintedForm formOfContract(UUID contractId, String url) {
-        return PrintedForm.issuedFor(PersonOwner.contract(contractId),
+        return PrintedForms.issuedFor(PersonOwner.contract(contractId),
                 new UskDocument(PrintedFormType.CONTRACT, url, 205312L), NOW);
     }
 }

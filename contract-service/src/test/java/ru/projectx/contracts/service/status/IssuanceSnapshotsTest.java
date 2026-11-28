@@ -17,6 +17,7 @@ import ru.projectx.contracts.entity.policy.LmPolicy;
 import ru.projectx.contracts.entity.policy.LmPolicyStatus;
 import ru.projectx.contracts.entity.party.PersonOwner;
 import ru.projectx.contracts.entity.document.PrintedForm;
+import ru.projectx.contracts.entity.document.PrintedForms;
 import ru.projectx.contracts.entity.document.PrintedFormType;
 import ru.projectx.contracts.entity.issuance.RequestParticipant;
 import ru.projectx.contracts.entity.document.UskDocument;
@@ -55,7 +56,7 @@ class IssuanceSnapshotsTest {
         given(requests.findById(Tasks.REQUEST)).willReturn(Optional.of(request));
         given(contracts.findByRequestIndividualRequestId(Tasks.REQUEST)).willReturn(List.of(CONTRACT));
         given(policies.findByRequestIndividualRequestId(Tasks.REQUEST)).willReturn(List.of(POLICY));
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(POLICY.id()),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(POLICY.id()),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.sogaz.ru/rvl/lm/2026/02/0555123456.pdf", 96256L), NOW);
         given(forms.findByLmPolicyIdInOrContractIdInOrderByCreatedAtAscIdAsc(List.of(POLICY.id()), List.of(CONTRACT.id()))).willReturn(List.of(form));
 

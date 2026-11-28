@@ -10,7 +10,7 @@ import ru.projectx.contracts.entity.party.PersonOwner;
 class PrintedFormTest {
 
     private static final Instant NOW = Instant.parse("2026-02-10T07:05:00Z");
-    private static final ParticipantAttachment ATTACHMENT = new ParticipantAttachment(
+    private static final ParticipantAttachment ATTACHMENT = AttachmentOwners.certificate(
             UUID.fromString("61a7982c-a0b4-4bbf-9527-60b40b752803"),
             UUID.fromString("6778e8c2-985a-4d54-9bd3-0f6403b104d6"),
             UUID.fromString("3c2f8e10-5a7b-4d21-9f6e-1b0a7c4d8e21"));
@@ -20,7 +20,7 @@ class PrintedFormTest {
 
     @Test
     void receivedCertificate_belongsToTheParticipantAttachmentAndNotToAPolicy() {
-        PrintedForm certificate = PrintedForm.receivedCertificate(ATTACHMENT, FILE, NOW);
+        PrintedForm certificate = PrintedForms.receivedCertificate(ATTACHMENT, FILE, NOW);
 
         assertThat(certificate.attachment()).contains(ATTACHMENT);
         assertThat(certificate.lmPolicyId()).isEmpty();
@@ -30,7 +30,7 @@ class PrintedFormTest {
 
     @Test
     void receivedCertificate_isAFinalMedicalCertificateOfFirstVersionWithItsStoredFile() {
-        PrintedForm certificate = PrintedForm.receivedCertificate(ATTACHMENT, FILE, NOW);
+        PrintedForm certificate = PrintedForms.receivedCertificate(ATTACHMENT, FILE, NOW);
 
         assertThat(certificate.docType()).isEqualTo(PrintedFormType.MEDICAL_CERTIFICATE);
         assertThat(certificate.kind()).isEqualTo(PrintedFormKind.FINAL);
@@ -41,7 +41,7 @@ class PrintedFormTest {
 
     @Test
     void lmPolicyForm_hasNoAttachmentAndNoStoredFile() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.example.test/lm/0555123456.pdf", 96256L), NOW);
 
         assertThat(form.attachment()).isEmpty();
@@ -51,7 +51,7 @@ class PrintedFormTest {
 
     @Test
     void lmPolicyForm_isTheFirstVersion() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.example.test/lm/0555123456.pdf", 96256L), NOW);
 
         assertThat(form.version()).isEqualTo(1);
@@ -59,7 +59,7 @@ class PrintedFormTest {
 
     @Test
     void contractForm_belongsToTheContractOnlyAndCarriesTheUskLinkAndSize() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.contract(ATTACHMENT.individualRequestId()),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.contract(ATTACHMENT.individualRequestId()),
                 new UskDocument(PrintedFormType.CONTRACT, "https://s3.example.test/km/DKM-2026-000001.pdf", 205312L), NOW);
 
         assertThat(form.contractId()).contains(ATTACHMENT.individualRequestId());
@@ -73,10 +73,24 @@ class PrintedFormTest {
 
     @Test
     void lmPolicyForm_belongsToNoContract() {
-        PrintedForm form = PrintedForm.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
+        PrintedForm form = PrintedForms.issuedFor(PersonOwner.lmPolicy(ATTACHMENT.participantId()),
                 new UskDocument(PrintedFormType.POLICY, "https://s3.example.test/lm/0555123456.pdf", 96256L), NOW);
 
         assertThat(form.contractId()).isEmpty();
+    }
+
+    @Test
+    void receivedConsent_belongsToTheFamilyMemberAndHasNoRequestOwner() {
+        ParticipantAttachment owner = AttachmentOwners.consent(ATTACHMENT.individualRequestId(),
+                ATTACHMENT.participantId(), ATTACHMENT.attachmentId());
+
+        PrintedForm consent = PrintedForms.receivedAttachment(owner, PrintedFormType.PD_CONSENT, FILE, NOW);
+
+        assertThat(consent.attachment()).contains(owner);
+        assertThat(consent.docType()).isEqualTo(PrintedFormType.PD_CONSENT);
+        assertThat(consent.storedFile()).contains(FILE);
+        assertThat(consent.deletedAt()).isEmpty();
+        assertThat(consent.deletedRequestId()).isEmpty();
     }
 
     @Test

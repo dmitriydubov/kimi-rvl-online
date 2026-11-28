@@ -60,6 +60,13 @@ public class PrometheusSteps {
         counterGrew(name, "operation", operation, growth);
     }
 
+    @Тогда("у счётчика Prometheus {string} нет меток {string} и {string}")
+    public void counterHasNoLabels(String name, String first, String second) throws IOException, InterruptedException {
+        Pattern series = Pattern.compile("^" + Pattern.quote(name) + "(?:\\{([^}]*)})? \\S+$", Pattern.MULTILINE);
+        List<String> labels = series.matcher(scrape()).results().map(match -> match.group(1)).toList();
+        assertThat(labels).allMatch(value -> value == null || !value.contains(first + "=") && !value.contains(second + "="));
+    }
+
     @Тогда("метрика Prometheus {string} равна {int}")
     public void gaugeEquals(String name, int expected) throws IOException, InterruptedException {
         Pattern series = Pattern.compile("^" + Pattern.quote(name) + "(?:\\{[^}]*})? (\\S+)$", Pattern.MULTILINE);

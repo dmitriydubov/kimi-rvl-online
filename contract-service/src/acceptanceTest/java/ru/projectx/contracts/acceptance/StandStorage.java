@@ -89,6 +89,7 @@ final class StandStorage {
     }
 
     List<String> keys(String bucket, String prefix) throws Exception {
+        recover();
         List<String> keys = new ArrayList<>();
         for (Result<Item> item : client().listObjects(
                 ListObjectsArgs.builder().bucket(bucket).prefix(prefix).recursive(true).build())) {
@@ -98,6 +99,7 @@ final class StandStorage {
     }
 
     byte[] object(String bucket, String key) throws Exception {
+        recover();
         try (GetObjectResponse object = client().getObject(GetObjectArgs.builder().bucket(bucket).object(key).build())) {
             return object.readAllBytes();
         }
@@ -128,7 +130,7 @@ final class StandStorage {
 
     void recover() {
         switch (state) {
-            case STOPPED -> docker().startContainerCmd(container.getContainerId()).exec();
+            case STOPPED -> await("контейнер хранилища запущен").atMost(RECOVERY).ignoreExceptions().until(this::start);
             case PAUSED -> docker().unpauseContainerCmd(container.getContainerId()).exec();
             case RUNNING -> {
                 return;
@@ -137,6 +139,11 @@ final class StandStorage {
         }
         state = State.RUNNING;
         await("хранилище стенда снова отвечает").atMost(RECOVERY).ignoreExceptions().until(this::answers);
+    }
+
+    private boolean start() {
+        docker().startContainerCmd(container.getContainerId()).exec();
+        return true;
     }
 
     private boolean answers() throws Exception {

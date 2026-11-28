@@ -32,7 +32,7 @@ class AttachmentFilesTest {
         "application/pdf, application/pdf, pdf",
         "' image/jpeg ; name=x', image/jpeg, jpg"})
     void configuredType_isAcceptedWithItsExtension(String declared, String type, String extension) {
-        assertThat(files.accept(Uploads.sized(declared, 76)))
+        assertThat(files.accept(sized(declared, 76)))
                 .isEqualTo(new AttachmentFiles.AcceptedFile(type, extension));
         assertThat(registry.find("contracts.attachments.rejected").counter()).isNull();
     }
@@ -40,7 +40,7 @@ class AttachmentFilesTest {
     @ParameterizedTest
     @ValueSource(strings = {"image/tiff", "image/gif", "", "image/jpeg2", "jpeg"})
     void otherType_isRejectedAsContentTypeAndCounted(String declared) {
-        assertThatThrownBy(() -> files.accept(Uploads.sized(declared, 76)))
+        assertThatThrownBy(() -> files.accept(sized(declared, 76)))
                 .isInstanceOfSatisfying(AttachmentRejectedException.class,
                         rejected -> assertThat(rejected.defect()).isEqualTo(AttachmentDefect.CONTENT_TYPE));
         assertThat(registry.get("contracts.attachments.rejected").tag("reason", "content_type").counter().count())
@@ -53,14 +53,14 @@ class AttachmentFilesTest {
                 new AttachmentProperties(DataSize.ofBytes(LIMIT), Map.of(";name=x", "jpg")),
                 new AttachmentMetrics(registry));
 
-        assertThatThrownBy(() -> literal.accept(Uploads.sized(";name=x", 76)))
+        assertThatThrownBy(() -> literal.accept(sized(";name=x", 76)))
                 .isInstanceOfSatisfying(AttachmentRejectedException.class,
                         rejected -> assertThat(rejected.defect()).isEqualTo(AttachmentDefect.CONTENT_TYPE));
     }
 
     @Test
     void missingType_isRejectedAsContentType() {
-        assertThatThrownBy(() -> files.accept(Uploads.sized(null, 76)))
+        assertThatThrownBy(() -> files.accept(sized(null, 76)))
                 .isInstanceOfSatisfying(AttachmentRejectedException.class,
                         rejected -> assertThat(rejected.defect()).isEqualTo(AttachmentDefect.CONTENT_TYPE));
     }
@@ -68,7 +68,7 @@ class AttachmentFilesTest {
     @ParameterizedTest
     @ValueSource(longs = {0, LIMIT + 1})
     void emptyOrOverLimitFile_isRejectedAsSizeAndCounted(long size) {
-        assertThatThrownBy(() -> files.accept(Uploads.sized("image/png", size)))
+        assertThatThrownBy(() -> files.accept(sized("image/png", size)))
                 .isInstanceOfSatisfying(AttachmentRejectedException.class,
                         rejected -> assertThat(rejected.defect()).isEqualTo(AttachmentDefect.SIZE));
         assertThat(registry.get("contracts.attachments.rejected").tag("reason", "size").counter().count()).isEqualTo(1);
@@ -77,13 +77,17 @@ class AttachmentFilesTest {
     @ParameterizedTest
     @ValueSource(longs = {1, LIMIT})
     void fileFromOneByteUpToTheLimit_isAccepted(long size) {
-        assertThat(files.accept(Uploads.sized("image/png", size)).extension()).isEqualTo("png");
+        assertThat(files.accept(sized("image/png", size)).extension()).isEqualTo("png");
     }
 
     @Test
     void wrongTypeAndSize_isRejectedForTheTypeFirst() {
-        assertThatThrownBy(() -> files.accept(Uploads.sized("image/gif", 0)))
+        assertThatThrownBy(() -> files.accept(sized("image/gif", 0)))
                 .isInstanceOfSatisfying(AttachmentRejectedException.class,
                         rejected -> assertThat(rejected.defect()).isEqualTo(AttachmentDefect.CONTENT_TYPE));
+    }
+
+    private static AttachmentCommand sized(String contentType, long size) {
+        return AttachmentCommands.of(Uploads.sized(contentType, size));
     }
 }

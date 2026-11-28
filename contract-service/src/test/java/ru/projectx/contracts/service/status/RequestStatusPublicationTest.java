@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import ru.projectx.contracts.entity.issuance.DocumentKind;
 import ru.projectx.contracts.entity.issuance.IssuanceRequest;
 import ru.projectx.contracts.entity.issuance.IssuedPolicy;
@@ -149,6 +151,9 @@ class RequestStatusPublicationTest {
         publication.afterCancellation(Tasks.REQUEST, NOW);
 
         assertThat(request.cancelled()).isTrue();
+        InOrder order = inOrder(requests);
+        order.verify(requests).lockById(Tasks.REQUEST);
+        order.verify(requests).findById(Tasks.REQUEST);
         ArgumentCaptor<OutboxDraft> draft = ArgumentCaptor.captor();
         verify(journal).record(draft.capture(), eq(NOW));
         assertThat(draft.getValue().envelope().entityVersion()).isEqualTo(2);
